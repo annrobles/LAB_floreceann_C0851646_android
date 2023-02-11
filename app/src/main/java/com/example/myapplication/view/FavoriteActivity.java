@@ -3,6 +3,8 @@ package com.example.myapplication.view;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -13,6 +15,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.databinding.ActivityFavoriteBinding;
+import com.example.myapplication.model.Place;
+import com.example.myapplication.viewmodel.PlaceViewModel;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -21,6 +26,10 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 public class FavoriteActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -31,6 +40,11 @@ public class FavoriteActivity extends FragmentActivity implements OnMapReadyCall
     LocationManager locationManager;
     LocationListener locationListener;
 
+    private ActivityFavoriteBinding binding;
+    private PlaceViewModel placeViewModel;
+    private long placeId;
+    Place place;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,6 +53,7 @@ public class FavoriteActivity extends FragmentActivity implements OnMapReadyCall
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
     }
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -75,6 +90,8 @@ public class FavoriteActivity extends FragmentActivity implements OnMapReadyCall
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
+                String address = "Could not find the address";
+
                 Location location = new Location("Your Destination");
                 location.setLatitude(latLng.latitude);
                 location.setLongitude(latLng.longitude);
@@ -82,9 +99,50 @@ public class FavoriteActivity extends FragmentActivity implements OnMapReadyCall
             }
 
             private void setMarker(LatLng latLng) {
+                MarkerOptions options = new MarkerOptions().position(latLng)
+                        .title("Your destination");
+                mMap.addMarker(options);
+
 
             }
         });
+
+    }
+
+    private void getCompleteAddress(LatLng latLng) {
+        String address = "Could not find the address";
+
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addressList = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
+            if (addressList != null && addressList.size() > 0) {
+                address = "\n";
+
+                // street name
+                if (addressList.get(0).getThoroughfare() != null)
+                    address += addressList.get(0).getThoroughfare() + "\n";
+                if (addressList.get(0).getLocality() != null)
+                    address += addressList.get(0).getLocality() + " ";
+                if (addressList.get(0).getPostalCode() != null)
+                    address += addressList.get(0).getPostalCode() + " ";
+                if (addressList.get(0).getAdminArea() != null)
+                    address += addressList.get(0).getAdminArea();
+
+                place = new Place(address, latLng.latitude, latLng.longitude, new Date());
+                System.out.println(place.getAddress());
+                if (place != null && placeId != 0) {
+                    place.setId(placeId);
+                    System.out.println(place.getAddress());
+                    placeViewModel.update(place);
+                }
+                else {
+                    placeViewModel.insert(place);
+                    System.out.println(place.getAddress());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -117,6 +175,8 @@ public class FavoriteActivity extends FragmentActivity implements OnMapReadyCall
 
         Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         setHomeMarker(lastKnownLocation);
+
+
     }
 
     private void requestLocationPermission() {
