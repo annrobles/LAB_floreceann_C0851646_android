@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Favorite Places</string>
+    <string name="address">Address</string>
+    <string name="createdDate">Created Date</string>
 </resources>
